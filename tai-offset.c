@@ -23,6 +23,7 @@
 #include <string.h>
 #include <signal.h>
 #include <unistd.h>
+#include <stdbool.h>
 
 int set_tai(int offset)
 {
@@ -46,23 +47,45 @@ int get_tai(void)
 	return tx.tai;
 }
 
+void help() {
+    printf("Usage: tai-offset [num-seconds]\n");
+    printf("  \n");
+    printf("  Prints the offset between CLOCK_TAI and unixtime,\n");
+    printf("  and sets it once if the optional argument is given.\n");
+    exit(1);
+}
+
 int main(int argc, char **argv)
 {
-	int i, ret;
-
-	ret = get_tai();
-	printf("tai offset started at %i\n", ret);
-
-	printf("Checking tai offsets can be properly set: ");
-	fflush(stdout);
-	for (i = 1; i <= 60; i++) {
-		ret = set_tai(i);
-		ret = get_tai();
-		if (ret != i) {
-			printf("[FAILED] expected: %i got %i\n", i, ret);
-			return 1;
-		}
+	int n_args = argc - 1;
+	if (n_args > 1)
+	    help();
+	int offset;
+	bool do_set_offset;
+	if (n_args == 0) {
+	    do_set_offset = false;
+	} else {
+	    char* const input = argv[1];
+	    char* remainder = input;
+	    offset = strtol(input, &remainder, 10);
+	    int len = strlen(input);
+	    if ((remainder - input) != len)
+		help();
+	    do_set_offset = true;
 	}
-	printf("[OK]\n");
+
+	int ret = get_tai();
+	printf("current CLOCK_TAI offset: %i\n", ret);
+	fflush(stdout);
+
+	if (do_set_offset) {
+	    ret = set_tai(offset);
+	    ret = get_tai();
+	    if (ret != offset) {
+		printf("[FAILED] expected: %i got %i\n", offset, ret);
+		return 1;
+	    }
+	    printf("offset set to %i\n", offset);
+	}
 	return 0;
 }
